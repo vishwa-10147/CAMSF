@@ -1,0 +1,412 @@
+"""
+====================================================================
+Confidence-Driven Adaptive Extended Kalman Filter (CDA-EKF)
+
+Paper:
+A Confidence-Driven Adaptive Multi-Sensor Fusion Framework
+for Robust Autonomous Vehicle Localization
+
+Author : Vishwa
+====================================================================
+
+This module implements the CDA-EKF used to fuse KITTI Raw IMU (process
+model) and GPS (measurement model) signals under per-frame adaptive
+sensor weights produced by ``adaptive_weights.py``.
+
+State vector (4,)
+    [x, y, yaw, v]
+        x, y : position in a local ENU tangent-plane frame, meters
+        yaw  : heading, radians
+        v    : forward speed, m/s
+
+Control input (from IMU / OXTS)
+    af : forward acceleration, m/s^2
+    wu : yaw rate about the "up" axis, rad/s
+
+Measurement vector (3,)
+    [x_gps, y_gps, v_gps]
+
+Adaptive behaviour
+    * ``GPS Weight`` scales the measurement-noise covariance ``R``: a
+      low GPS confidence widens ``R`` so the correction step trusts the
+      GPS fix less.
+    * ``IMU Weight`` scales the process-noise covariance ``Q`` entries
+      that come from the IMU-driven motion model (speed/heading): a low
+      IMU confidence widens ``Q`` so the prediction step is trusted
+      less relative to the next GPS correction.
+    * ``Camera Weight`` scales the heading (yaw) process noise. Visual
+      cues are the primary source of independent heading information in
+      the full Paper 2 architecture, so low camera confidence widens
+      heading uncertainty between GPS corrections.
+
+If no adaptive weights are supplied, the filter falls back to fixed,
+equal-trust noise (the "baseline" / non-adaptive EKF) so the same code
+path can generate both the proposed and baseline trajectories used for
+comparison in ``adaptive_fusion.py``.
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass, field
+from typing import Sequence
+
+import numpy as np
+import pandas as pd
+
+try:
+    from .gps_quality import EARTH_RADIUS_METERS, OXTS_COLUMNS
+except ImportError:  # pragma: no cover - supports direct script execution.
+    from gps_quality import EARTH_RADIUS_METERS, OXTS_COLUMNS
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+STATE_COLUMNS: tuple[str, ...] = ("X", "Y", "Yaw", "V")
+
+
+# ====================================================================
+# Coordinate helpers
+# ====================================================================
+
+
+def latlon_to_local_xy(
+    lat_deg: np.ndarray,
+    lon_deg: np.ndarray,
+    lat0_deg: float,
+    lon0_deg: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Project WGS-84 latitude/longitude to a local equirectangular ENU
+    tangent plane centered on ``(lat0_deg, lon0_deg)``.
+
+    This mirrors the haversine convention already used in
+    ``gps_quality.py`` (same Earth radius constant) but returns signed
+    Cartesian offsets instead of a scalar distance, which is what the
+    EKF measurement model requires.
+    """
+
+    lat = np.radians(np.asarray(lat_deg, dtype=float))
+    lon = np.radians(np.asarray(lon_deg, dtype=float))
+    lat0 = np.radians(float(lat0_deg))
+    lon0 = np.radians(float(lon0_deg))
+
+    x = EARTH_RADIUS_METERS * (lon - lon0) * np.cos(lat0)
+    y = EARTH_RADIUS_METERS * (lat - lat0)
+    return x, y
+
+
+class AdaptiveEKFError(RuntimeError):
+    """Raised when the CDA-EKF cannot process a drive safely."""
+
+
+# ====================================================================
+# Configuration
+# ====================================================================
+
+
+@dataclass(frozen=True)
+class AdaptiveEKFConfig:
+    """Tunable noise parameters for the CDA-EKF."""
+
+    dt: float = 0.1  # KITTI Raw OXTS packets are logged at 10 Hz.
+
+    # Baseline (confidence == 1.0) process-noise variances.
+    process_var_position: float = 0.05
+    process_var_yaw: float = 0.02
+    process_var_speed: float = 0.15
+
+    # Baseline (confidence == 1.0) measurement-noise variances.
+    measurement_var_position: float = 1.5
+    measurement_var_speed: float = 0.5
+
+    # Initial state covariance (diagonal).
+    initial_covariance: tuple[float, ...] = (5.0, 5.0, 0.5, 1.0)
+
+    # How strongly a confidence/weight deficit inflates the associated
+    # noise term: multiplier = 1 + adaptive_gain * (1 - weight).
+    adaptive_gain: float = 4.0
+
+    # Guardrails so a single near-zero confidence frame cannot make the
+    # filter numerically unstable.
+    min_multiplier: float = 1.0
+    max_multiplier: float = 25.0
+
+    def noise_multiplier(self, weight: float) -> float:
+        """Map a confidence/weight in [0, 1] to a noise-covariance multiplier."""
+
+        weight = float(np.clip(weight, 0.0, 1.0))
+        multiplier = 1.0 + self.adaptive_gain * (1.0 - weight)
+        return float(np.clip(multiplier, self.min_multiplier, self.max_multiplier))
+
+
+# ====================================================================
+# Filter
+# ====================================================================
+
+
+class AdaptiveEKF:
+    """
+    Confidence-driven adaptive EKF for the [x, y, yaw, v] bicycle model.
+    """
+
+    def __init__(
+        self,
+        initial_state: Sequence[float],
+        config: AdaptiveEKFConfig | None = None,
+    ) -> None:
+        self.config = config or AdaptiveEKFConfig()
+        self.state = np.asarray(initial_state, dtype=float).reshape(4)
+        self.covariance = np.diag(np.asarray(self.config.initial_covariance, dtype=float))
+
+    # ----------------------------------------------------------------
+    # Prediction (IMU-driven motion model)
+    # ----------------------------------------------------------------
+
+    def predict(
+        self,
+        af: float,
+        wu: float,
+        dt: float | None = None,
+        imu_weight: float = 1.0,
+        camera_weight: float = 1.0,
+    ) -> None:
+        """Propagate state and covariance using the IMU control input."""
+
+        dt = self.config.dt if dt is None else float(dt)
+        x, y, yaw, v = self.state
+
+        # --- Nonlinear motion model -----------------------------------
+        new_x = x + v * np.cos(yaw) * dt
+        new_y = y + v * np.sin(yaw) * dt
+        new_yaw = _wrap_angle(yaw + wu * dt)
+        new_v = v + af * dt
+        self.state = np.array([new_x, new_y, new_yaw, new_v], dtype=float)
+
+        # --- Jacobian of the motion model w.r.t. the state -------------
+        F = np.eye(4)
+        F[0, 2] = -v * np.sin(yaw) * dt
+        F[0, 3] = np.cos(yaw) * dt
+        F[1, 2] = v * np.cos(yaw) * dt
+        F[1, 3] = np.sin(yaw) * dt
+
+        # --- Adaptive process noise ------------------------------------
+        imu_multiplier = self.config.noise_multiplier(imu_weight)
+        camera_multiplier = self.config.noise_multiplier(camera_weight)
+
+        Q = np.diag(
+            [
+                self.config.process_var_position * imu_multiplier,
+                self.config.process_var_position * imu_multiplier,
+                self.config.process_var_yaw * camera_multiplier,
+                self.config.process_var_speed * imu_multiplier,
+            ]
+        )
+
+        self.covariance = F @ self.covariance @ F.T + Q
+
+    # ----------------------------------------------------------------
+    # Correction (GPS measurement model)
+    # ----------------------------------------------------------------
+
+    def update(
+        self,
+        z: Sequence[float],
+        gps_weight: float = 1.0,
+    ) -> None:
+        """Correct the state estimate using a GPS position/speed fix."""
+
+        z = np.asarray(z, dtype=float).reshape(3)
+
+        H = np.zeros((3, 4))
+        H[0, 0] = 1.0  # x
+        H[1, 1] = 1.0  # y
+        H[2, 3] = 1.0  # v
+
+        gps_multiplier = self.config.noise_multiplier(gps_weight)
+        R = np.diag(
+            [
+                self.config.measurement_var_position * gps_multiplier,
+                self.config.measurement_var_position * gps_multiplier,
+                self.config.measurement_var_speed * gps_multiplier,
+            ]
+        )
+
+        predicted_z = H @ self.state
+        innovation = z - predicted_z
+
+        S = H @ self.covariance @ H.T + R
+        kalman_gain = self.covariance @ H.T @ np.linalg.inv(S)
+
+        self.state = self.state + kalman_gain @ innovation
+        self.state[2] = _wrap_angle(self.state[2])
+
+        identity = np.eye(4)
+        self.covariance = (identity - kalman_gain @ H) @ self.covariance
+
+    # ----------------------------------------------------------------
+    # Combined predict + update step
+    # ----------------------------------------------------------------
+
+    def step(
+        self,
+        af: float,
+        wu: float,
+        z: Sequence[float],
+        dt: float | None = None,
+        imu_weight: float = 1.0,
+        camera_weight: float = 1.0,
+        gps_weight: float = 1.0,
+    ) -> np.ndarray:
+        """Run one predict/update cycle and return the resulting state."""
+
+        self.predict(af=af, wu=wu, dt=dt, imu_weight=imu_weight, camera_weight=camera_weight)
+        self.update(z=z, gps_weight=gps_weight)
+        return self.state.copy()
+
+
+def _wrap_angle(angle: float) -> float:
+    """Wrap an angle (radians) into ``(-pi, pi]``."""
+
+    return float((angle + np.pi) % (2.0 * np.pi) - np.pi)
+
+
+# ====================================================================
+# Batch runner
+# ====================================================================
+
+
+@dataclass(frozen=True)
+class WeightSeries:
+    """Per-frame adaptive weights fed to the CDA-EKF."""
+
+    camera: np.ndarray
+    gps: np.ndarray
+    imu: np.ndarray
+
+
+def _build_weight_series(
+    frame_count: int,
+    weights_df: pd.DataFrame | None,
+) -> WeightSeries:
+    if weights_df is None:
+        uniform = np.full(frame_count, 1.0 / 3.0, dtype=float)
+        return WeightSeries(camera=uniform.copy(), gps=uniform.copy(), imu=uniform.copy())
+
+    required = {"Camera Weight", "GPS Weight", "IMU Weight"}
+    missing = required.difference(weights_df.columns)
+    if missing:
+        raise AdaptiveEKFError(f"Adaptive weights dataframe is missing columns: {missing}")
+    if len(weights_df) != frame_count:
+        raise AdaptiveEKFError(
+            f"Adaptive weights row count ({len(weights_df)}) does not match "
+            f"OXTS frame count ({frame_count})."
+        )
+
+    ordered = weights_df.sort_values("Frame") if "Frame" in weights_df.columns else weights_df
+    return WeightSeries(
+        camera=ordered["Camera Weight"].to_numpy(dtype=float),
+        gps=ordered["GPS Weight"].to_numpy(dtype=float),
+        imu=ordered["IMU Weight"].to_numpy(dtype=float),
+    )
+
+
+def run_adaptive_ekf(
+    oxts_df: pd.DataFrame,
+    weights_df: pd.DataFrame | None = None,
+    config: AdaptiveEKFConfig | None = None,
+    adaptive: bool = True,
+) -> pd.DataFrame:
+    """
+    Run the CDA-EKF over an entire drive's OXTS sequence.
+
+    Parameters
+    ----------
+    oxts_df:
+        Per-frame OXTS packets containing at least ``OXTS_COLUMNS`` (as
+        produced by ``gps_quality.py`` / carried through
+        ``sensor_confidence_index_{drive}.csv``).
+    weights_df:
+        Adaptive sensor weights as produced by
+        ``adaptive_weights.py`` (``adaptive_sensor_weights_{drive}.csv``).
+        If ``None`` or ``adaptive=False``, the filter uses fixed,
+        equal-trust weights, which yields the non-adaptive EKF baseline.
+    config:
+        Optional filter configuration. Defaults to
+        :class:`AdaptiveEKFConfig`.
+    adaptive:
+        Whether to apply the supplied per-frame weights. Set to
+        ``False`` to compute a fixed-weight baseline trajectory using
+        the same weights dataframe's shape (for a fair comparison).
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per frame with columns ``Frame``, ``X``, ``Y``, ``Yaw``,
+        ``V``, ``X GPS``, ``Y GPS``, ``V GPS``.
+    """
+
+    missing = [column for column in OXTS_COLUMNS if column not in oxts_df.columns]
+    if missing:
+        raise AdaptiveEKFError(f"OXTS dataframe is missing columns: {missing}")
+    if oxts_df.empty:
+        raise AdaptiveEKFError("OXTS dataframe contains no rows.")
+
+    config = config or AdaptiveEKFConfig()
+    frame_count = len(oxts_df)
+
+    lat = oxts_df["lat"].to_numpy(dtype=float)
+    lon = oxts_df["lon"].to_numpy(dtype=float)
+    x_gps, y_gps = latlon_to_local_xy(lat, lon, lat0_deg=lat[0], lon0_deg=lon[0])
+
+    speed_gps = np.sqrt(
+        oxts_df["vn"].to_numpy(dtype=float) ** 2 + oxts_df["ve"].to_numpy(dtype=float) ** 2
+    )
+    yaw_gps = oxts_df["yaw"].to_numpy(dtype=float)
+    af = oxts_df["af"].to_numpy(dtype=float)
+    wu = oxts_df["wu"].to_numpy(dtype=float)
+
+    weight_series = _build_weight_series(frame_count, weights_df if adaptive else None)
+
+    initial_state = np.array([x_gps[0], y_gps[0], yaw_gps[0], speed_gps[0]], dtype=float)
+    ekf = AdaptiveEKF(initial_state=initial_state, config=config)
+
+    records: list[dict[str, float]] = [
+        {
+            "Frame": 0,
+            "X": initial_state[0],
+            "Y": initial_state[1],
+            "Yaw": initial_state[2],
+            "V": initial_state[3],
+            "X GPS": x_gps[0],
+            "Y GPS": y_gps[0],
+            "V GPS": speed_gps[0],
+        }
+    ]
+
+    for frame in range(1, frame_count):
+        z = (x_gps[frame], y_gps[frame], speed_gps[frame])
+        state = ekf.step(
+            af=af[frame],
+            wu=wu[frame],
+            z=z,
+            dt=config.dt,
+            imu_weight=weight_series.imu[frame],
+            camera_weight=weight_series.camera[frame],
+            gps_weight=weight_series.gps[frame],
+        )
+        records.append(
+            {
+                "Frame": frame,
+                "X": state[0],
+                "Y": state[1],
+                "Yaw": state[2],
+                "V": state[3],
+                "X GPS": x_gps[frame],
+                "Y GPS": y_gps[frame],
+                "V GPS": speed_gps[frame],
+            }
+        )
+
+    return pd.DataFrame.from_records(records)

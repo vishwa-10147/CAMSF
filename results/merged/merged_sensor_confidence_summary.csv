@@ -1,0 +1,55 @@
+Drive,Metric,Value
+2011_09_26_drive_0001_sync,Average GPS Confidence,0.7628832177112217
+2011_09_26_drive_0001_sync,Average IMU Confidence,0.9472945531935256
+2011_09_26_drive_0001_sync,Average Sensor Confidence Index,0.8366477519041434
+2011_09_26_drive_0001_sync,Maximum Sensor Confidence Index,0.9067620607172698
+2011_09_26_drive_0001_sync,Minimum Sensor Confidence Index,0.7327708895823319
+2011_09_26_drive_0001_sync,Sensor Confidence Index Std,0.0455316180987859
+2011_09_26_drive_0002_sync,Average GPS Confidence,0.7169878891594601
+2011_09_26_drive_0002_sync,Average IMU Confidence,0.8831050936103911
+2011_09_26_drive_0002_sync,Average Sensor Confidence Index,0.7834347709398325
+2011_09_26_drive_0002_sync,Maximum Sensor Confidence Index,0.8429337344843264
+2011_09_26_drive_0002_sync,Minimum Sensor Confidence Index,0.6833786609114262
+2011_09_26_drive_0002_sync,Sensor Confidence Index Std,0.0380513302949405
+2011_09_26_drive_0005_sync,Average GPS Confidence,0.7091043350297876
+2011_09_26_drive_0005_sync,Average IMU Confidence,0.9132503683721056
+2011_09_26_drive_0005_sync,Average Sensor Confidence Index,0.7907627483667148
+2011_09_26_drive_0005_sync,Maximum Sensor Confidence Index,0.8812179000498315
+2011_09_26_drive_0005_sync,Minimum Sensor Confidence Index,0.6678821809191305
+2011_09_26_drive_0005_sync,Sensor Confidence Index Std,0.0429259857116087
+2011_09_26_drive_0009_sync,Average GPS Confidence,0.6900676781426281
+2011_09_26_drive_0009_sync,Average IMU Confidence,0.9397538794692968
+2011_09_26_drive_0009_sync,Average Sensor Confidence Index,0.7899421586732956
+2011_09_26_drive_0009_sync,Maximum Sensor Confidence Index,0.9320089879901928
+2011_09_26_drive_0009_sync,Minimum Sensor Confidence Index,0.6440157437575273
+2011_09_26_drive_0009_sync,Sensor Confidence Index Std,0.0597434263491951
+2011_09_26_drive_0011_sync,Average GPS Confidence,0.7075348709921668
+2011_09_26_drive_0011_sync,Average IMU Confidence,0.9589949926155366
+2011_09_26_drive_0011_sync,Average Sensor Confidence Index,0.8081189196415148
+2011_09_26_drive_0011_sync,Maximum Sensor Confidence Index,0.8962502332912584
+2011_09_26_drive_0011_sync,Minimum Sensor Confidence Index,0.6022662076747141
+2011_09_26_drive_0011_sync,Sensor Confidence Index Std,0.078212037855657
+2011_09_26_drive_0015_sync,Average GPS Confidence,0.7486622842561191
+2011_09_26_drive_0015_sync,Average IMU Confidence,0.9472310866979976
+2011_09_26_drive_0015_sync,Average Sensor Confidence Index,0.8280898052328705
+2011_09_26_drive_0015_sync,Maximum Sensor Confidence Index,0.913529923999495
+2011_09_26_drive_0015_sync,Minimum Sensor Confidence Index,0.6923667477116411
+2011_09_26_drive_0015_sync,Sensor Confidence Index Std,0.0517980021916294
+2011_09_26_drive_0018_sync,Average GPS Confidence,0.8009483836145183
+2011_09_26_drive_0018_sync,Average IMU Confidence,0.9687076868024566
+2011_09_26_drive_0018_sync,Average Sensor Confidence Index,0.8680521048896938
+2011_09_26_drive_0018_sync,Maximum Sensor Confidence Index,0.9490956761605572
+2011_09_26_drive_0018_sync,Minimum Sensor Confidence Index,0.5989283031941773
+2011_09_26_drive_0018_sync,Sensor Confidence Index Std,0.1108775689520317
+2011_09_26_drive_0020_sync,Average GPS Confidence,0.7298627084431991
+2011_09_26_drive_0020_sync,Average IMU Confidence,0.9728585452354492
+2011_09_26_drive_0020_sync,Average Sensor Confidence Index,0.8270610431600992
+2011_09_26_drive_0020_sync,Maximum Sensor Confidence Index,0.8588064345829961
+2011_09_26_drive_0020_sync,Minimum Sensor Confidence Index,0.7543064126529793
+2011_09_26_drive_0020_sync,Sensor Confidence Index Std,0.0246141141326229
+2011_09_26_drive_0022_sync,Average GPS Confidence,0.743061812755314
+2011_09_26_drive_0022_sync,Average IMU Confidence,0.92367893031104
+2011_09_26_drive_0022_sync,Average Sensor Confidence Index,0.8153086597776045
+2011_09_26_drive_0022_sync,Maximum Sensor Confidence Index,0.914299545972206
+2011_09_26_drive_0022_sync,Minimum Sensor Confidence Index,0.6854509329656919
+2011_09_26_drive_0022_sync,Sensor Confidence Index Std,0.036262073043355

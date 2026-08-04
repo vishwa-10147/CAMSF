@@ -1,0 +1,64 @@
+Drive,Metric,Average
+2011_09_26_drive_0001_sync,GPS Distance (m),1.002653764653561
+2011_09_26_drive_0001_sync,GPS Position Stability,0.3795589480920412
+2011_09_26_drive_0001_sync,GPS Velocity Stability,0.9272720716228812
+2011_09_26_drive_0001_sync,GPS Heading Stability,0.9984826413855438
+2011_09_26_drive_0001_sync,Satellite Quality,0.8947811447811447
+2011_09_26_drive_0001_sync,Position Accuracy Score,0.6586223093409742
+2011_09_26_drive_0001_sync,Velocity Accuracy Score,0.7915606629472522
+2011_09_26_drive_0002_sync,GPS Distance (m),1.0715627748930283
+2011_09_26_drive_0002_sync,GPS Position Stability,0.3707858913298283
+2011_09_26_drive_0002_sync,GPS Velocity Stability,0.9509198251693972
+2011_09_26_drive_0002_sync,GPS Heading Stability,0.9960553937787796
+2011_09_26_drive_0002_sync,Satellite Quality,0.8736717827626916
+2011_09_26_drive_0002_sync,Position Accuracy Score,0.4266291382149111
+2011_09_26_drive_0002_sync,Velocity Accuracy Score,0.7212886576410502
+2011_09_26_drive_0005_sync,GPS Distance (m),0.4523283399064394
+2011_09_26_drive_0005_sync,GPS Position Stability,0.378881434015618
+2011_09_26_drive_0005_sync,GPS Velocity Stability,0.96627254469923
+2011_09_26_drive_0005_sync,GPS Heading Stability,0.9845777901239112
+2011_09_26_drive_0005_sync,Satellite Quality,0.6876623376623378
+2011_09_26_drive_0005_sync,Position Accuracy Score,0.6016759579746084
+2011_09_26_drive_0005_sync,Velocity Accuracy Score,0.6599075094845961
+2011_09_26_drive_0009_sync,GPS Distance (m),0.745297675284234
+2011_09_26_drive_0009_sync,GPS Position Stability,0.4310208312769227
+2011_09_26_drive_0009_sync,GPS Velocity Stability,0.9375132287744752
+2011_09_26_drive_0009_sync,GPS Heading Stability,0.995249486069234
+2011_09_26_drive_0009_sync,Satellite Quality,0.7575288246429185
+2011_09_26_drive_0009_sync,Position Accuracy Score,0.304031769192275
+2011_09_26_drive_0009_sync,Velocity Accuracy Score,0.7189290276445627
+2011_09_26_drive_0011_sync,GPS Distance (m),0.4933305491129172
+2011_09_26_drive_0011_sync,GPS Position Stability,0.5572583479876281
+2011_09_26_drive_0011_sync,GPS Velocity Stability,0.9539519266455146
+2011_09_26_drive_0011_sync,GPS Heading Stability,0.998668924687625
+2011_09_26_drive_0011_sync,Satellite Quality,0.8220534829976892
+2011_09_26_drive_0011_sync,Position Accuracy Score,0.2470465794681225
+2011_09_26_drive_0011_sync,Velocity Accuracy Score,0.6341831199501516
+2011_09_26_drive_0015_sync,GPS Distance (m),1.22591773738408
+2011_09_26_drive_0015_sync,GPS Position Stability,0.3834664358022932
+2011_09_26_drive_0015_sync,GPS Velocity Stability,0.9375521376326906
+2011_09_26_drive_0015_sync,GPS Heading Stability,0.9992480577278906
+2011_09_26_drive_0015_sync,Satellite Quality,0.9130700948882764
+2011_09_26_drive_0015_sync,Position Accuracy Score,0.644004971115131
+2011_09_26_drive_0015_sync,Velocity Accuracy Score,0.6734006733961837
+2011_09_26_drive_0018_sync,GPS Distance (m),0.1904872511035597
+2011_09_26_drive_0018_sync,GPS Position Stability,0.7192243792461147
+2011_09_26_drive_0018_sync,GPS Velocity Stability,0.9693920035068312
+2011_09_26_drive_0018_sync,GPS Heading Stability,0.9946028707118636
+2011_09_26_drive_0018_sync,Satellite Quality,0.920634920634921
+2011_09_26_drive_0018_sync,Position Accuracy Score,0.4840407001966936
+2011_09_26_drive_0018_sync,Velocity Accuracy Score,0.6888888888827167
+2011_09_26_drive_0020_sync,GPS Distance (m),0.2006836195549282
+2011_09_26_drive_0020_sync,GPS Position Stability,0.4326948633848611
+2011_09_26_drive_0020_sync,GPS Velocity Stability,0.9611726969763332
+2011_09_26_drive_0020_sync,GPS Heading Stability,0.9996267854338408
+2011_09_26_drive_0020_sync,Satellite Quality,0.8276955602536995
+2011_09_26_drive_0020_sync,Position Accuracy Score,0.4731392615705865
+2011_09_26_drive_0020_sync,Velocity Accuracy Score,0.7067997018816077
+2011_09_26_drive_0022_sync,GPS Distance (m),0.6428083453924842
+2011_09_26_drive_0022_sync,GPS Position Stability,0.393999619966515
+2011_09_26_drive_0022_sync,GPS Velocity Stability,0.9525543042991312
+2011_09_26_drive_0022_sync,GPS Heading Stability,0.984543323121858
+2011_09_26_drive_0022_sync,Satellite Quality,0.682232142857143
+2011_09_26_drive_0022_sync,Position Accuracy Score,0.7807339926081053
+2011_09_26_drive_0022_sync,Velocity Accuracy Score,0.7108307274274586

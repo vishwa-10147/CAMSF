@@ -1,0 +1,9 @@
+Metric,Value
+Average Camera Confidence,0.40772889833602705
+Average GPS Confidence,0.581366384487128
+Average IMU Confidence,0.7436896452558673
+Average Fused Confidence,0.6974914812359668
+Average Smoothed Confidence,0.6966500103821027
+Average Localization Reliability Score,0.6997952607793789
+Maximum Localization Reliability Score,0.8708838888483389
+Minimum Localization Reliability Score,0.475532624357763

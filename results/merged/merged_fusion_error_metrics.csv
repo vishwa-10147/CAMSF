@@ -1,0 +1,64 @@
+Drive,Metric,Value
+2011_09_26_drive_0001_sync,Adaptive RMSE (m),0.094599731799592
+2011_09_26_drive_0001_sync,Baseline RMSE (m),0.1026637956571617
+2011_09_26_drive_0001_sync,Adaptive MAE (m),0.0848199191212304
+2011_09_26_drive_0001_sync,Baseline MAE (m),0.0917813342531203
+2011_09_26_drive_0001_sync,Adaptive Final Drift (m),0.00251388177192
+2011_09_26_drive_0001_sync,Baseline Final Drift (m),0.0023198268814323
+2011_09_26_drive_0001_sync,RMSE Improvement (%),7.854827308839237
+2011_09_26_drive_0002_sync,Adaptive RMSE (m),0.1558648676973565
+2011_09_26_drive_0002_sync,Baseline RMSE (m),0.156055880111678
+2011_09_26_drive_0002_sync,Adaptive MAE (m),0.146142569692149
+2011_09_26_drive_0002_sync,Baseline MAE (m),0.1472977925490099
+2011_09_26_drive_0002_sync,Adaptive Final Drift (m),0.1827534279916948
+2011_09_26_drive_0002_sync,Baseline Final Drift (m),0.2035923097624523
+2011_09_26_drive_0002_sync,RMSE Improvement (%),0.1224000109350511
+2011_09_26_drive_0005_sync,Adaptive RMSE (m),0.0610509100796266
+2011_09_26_drive_0005_sync,Baseline RMSE (m),0.06173277654352
+2011_09_26_drive_0005_sync,Adaptive MAE (m),0.0543389633418416
+2011_09_26_drive_0005_sync,Baseline MAE (m),0.0546852665804527
+2011_09_26_drive_0005_sync,Adaptive Final Drift (m),0.095982481725757
+2011_09_26_drive_0005_sync,Baseline Final Drift (m),0.0984793529947936
+2011_09_26_drive_0005_sync,RMSE Improvement (%),1.1045452708784964
+2011_09_26_drive_0009_sync,Adaptive RMSE (m),0.1489071660608093
+2011_09_26_drive_0009_sync,Baseline RMSE (m),0.1411461748087134
+2011_09_26_drive_0009_sync,Adaptive MAE (m),0.1297412892705549
+2011_09_26_drive_0009_sync,Baseline MAE (m),0.1227730086313615
+2011_09_26_drive_0009_sync,Adaptive Final Drift (m),0.0117493880862008
+2011_09_26_drive_0009_sync,Baseline Final Drift (m),0.0113129096682295
+2011_09_26_drive_0009_sync,RMSE Improvement (%),-5.4985487652172695
+2011_09_26_drive_0011_sync,Adaptive RMSE (m),0.1036783682590177
+2011_09_26_drive_0011_sync,Baseline RMSE (m),0.1002463373982025
+2011_09_26_drive_0011_sync,Adaptive MAE (m),0.0725585239656611
+2011_09_26_drive_0011_sync,Baseline MAE (m),0.0699930361986256
+2011_09_26_drive_0011_sync,Adaptive Final Drift (m),0.0176644055267232
+2011_09_26_drive_0011_sync,Baseline Final Drift (m),0.017144838797634
+2011_09_26_drive_0011_sync,RMSE Improvement (%),-3.423597260398985
+2011_09_26_drive_0015_sync,Adaptive RMSE (m),0.1942023403468763
+2011_09_26_drive_0015_sync,Baseline RMSE (m),0.1902389140417316
+2011_09_26_drive_0015_sync,Adaptive MAE (m),0.181383248260714
+2011_09_26_drive_0015_sync,Baseline MAE (m),0.1766082340539007
+2011_09_26_drive_0015_sync,Adaptive Final Drift (m),0.2813667573706915
+2011_09_26_drive_0015_sync,Baseline Final Drift (m),0.2592581932829299
+2011_09_26_drive_0015_sync,RMSE Improvement (%),-2.0833940968960687
+2011_09_26_drive_0018_sync,Adaptive RMSE (m),0.0801459585297543
+2011_09_26_drive_0018_sync,Baseline RMSE (m),0.0819330055666338
+2011_09_26_drive_0018_sync,Adaptive MAE (m),0.0456728199869278
+2011_09_26_drive_0018_sync,Baseline MAE (m),0.0465083452530123
+2011_09_26_drive_0018_sync,Adaptive Final Drift (m),0.0913935377652675
+2011_09_26_drive_0018_sync,Baseline Final Drift (m),0.1260218563069099
+2011_09_26_drive_0018_sync,RMSE Improvement (%),2.181107631192851
+2011_09_26_drive_0020_sync,Adaptive RMSE (m),0.0881571043561836
+2011_09_26_drive_0020_sync,Baseline RMSE (m),0.0850586269034936
+2011_09_26_drive_0020_sync,Adaptive MAE (m),0.0773753178010804
+2011_09_26_drive_0020_sync,Baseline MAE (m),0.0755042939458023
+2011_09_26_drive_0020_sync,Adaptive Final Drift (m),0.1108785708486301
+2011_09_26_drive_0020_sync,Baseline Final Drift (m),0.1065740176335825
+2011_09_26_drive_0020_sync,RMSE Improvement (%),-3.6427550802171216
+2011_09_26_drive_0022_sync,Adaptive RMSE (m),0.162085652122462
+2011_09_26_drive_0022_sync,Baseline RMSE (m),0.1579677633000303
+2011_09_26_drive_0022_sync,Adaptive MAE (m),0.1390260135000512
+2011_09_26_drive_0022_sync,Baseline MAE (m),0.1373973637179117
+2011_09_26_drive_0022_sync,Adaptive Final Drift (m),0.1290300411008355
+2011_09_26_drive_0022_sync,Baseline Final Drift (m),0.1224322972581437
+2011_09_26_drive_0022_sync,RMSE Improvement (%),-2.6067906112024266
