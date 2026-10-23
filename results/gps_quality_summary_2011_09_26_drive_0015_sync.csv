@@ -1,8 +1,8 @@
 Metric,Average
-GPS Distance (m),1.22591773738408
-GPS Position Stability,0.3834664358022932
+GPS Distance (m),5.393523377092376
+GPS Position Stability,0.5552083793995473
 GPS Velocity Stability,0.9375521376326906
 GPS Heading Stability,0.9992480577278906
-Satellite Quality,0.9130700948882765
-Position Accuracy Score,0.644004971115131
+Satellite Quality,0.6582491582491582
+Position Accuracy Score,0.9321932124165557
 Velocity Accuracy Score,0.6734006733961837

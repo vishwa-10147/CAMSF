@@ -1,13 +1,29 @@
 """
-Confidence-Driven Adaptive Fusion (CDA-EKF orchestration) for KITTI Raw drives.
+============================================================================
+Confidence-Driven Adaptive Fusion orchestration -- FIXED
 
-This module wires the per-frame ``sensor_confidence_index_{drive}.csv``
-(OXTS + GPS/IMU confidence) and ``adaptive_sensor_weights_{drive}.csv``
-(Camera/GPS/IMU weights) artifacts into the CDA-EKF implemented in
-``adaptive_ekf.py``, exporting a fused trajectory, a fixed-weight
-baseline trajectory, and trajectory-error metrics for both, following
-the same Config/Artifacts/Processor pattern used throughout the
-pipeline (e.g. ``camera_quality.py``, ``adaptive_weights.py``).
+Paper:
+A Confidence-Driven Adaptive Multi-Sensor Fusion Framework
+for Robust Autonomous Vehicle Localization
+
+Author : Vishwa
+============================================================================
+
+Fixed vs. the original ``adaptive_fusion.py``
+---------------------------------------------
+1. **Honest reference.**  Error is computed against the *pristine* OXTS ENU
+   ground truth (``X GT (m)`` / ``Y GT (m)``, written by ``gps_degradation.py``
+   from the raw post-processed KITTI OXTS), never against the GPS measurement
+   itself.  The old code scored the filter against the same ``X GPS`` /
+   ``Y GPS`` stream it was fed, which is circular.
+
+2. **The GPS measurement is genuinely degraded.**  The EKF is offered the
+   degraded fix stream (``X Fix (m)`` / ``Y Fix (m)``) from the degradation
+   schedule, and on outage frames (``GPS Available == False``) the correction
+   step is skipped entirely.
+
+3. **Baseline is a true fixed-noise EKF.**  ``adaptive=False`` runs the nominal
+   R/Q with no per-frame weight adaptation (see ``adaptive_ekf.py``).
 """
 
 from __future__ import annotations
@@ -34,6 +50,16 @@ except ImportError:  # pragma: no cover - supports direct script execution.
 
 LOGGER = logging.getLogger(__name__)
 
+SCHEDULE_COLUMNS: tuple[str, ...] = (
+    "Frame",
+    "GPS State",
+    "GPS Available",
+    "X Fix (m)",
+    "Y Fix (m)",
+    "X GT (m)",
+    "Y GT (m)",
+)
+
 
 @dataclass(frozen=True)
 class AdaptiveFusionConfig:
@@ -56,12 +82,29 @@ class AdaptiveFusionArtifacts:
     error_figure: Path | None
 
 
+def _constant_weight_frame(weights_df: pd.DataFrame) -> pd.DataFrame:
+    """Return a weights frame holding each sensor's per-drive mean weight.
+
+    The adaptive weights are sum-to-1 shares per frame, so they never reach
+    1.0 and the adaptive arm always inflates R/Q by at least the multiplier
+    implied by the best observed share.  This constant-weight frame applies
+    exactly the same *mean* inflation on every frame, isolating the effect
+    of per-frame confidence variation from systematic noise inflation.
+    """
+
+    constant = weights_df.copy()
+    for column in ("Camera Weight", "GPS Weight", "IMU Weight"):
+        if column in constant.columns:
+            constant[column] = float(constant[column].mean())
+    return constant
+
+
 class AdaptiveFusionError(RuntimeError):
     """Raised when CDA-EKF fusion processing cannot complete safely."""
 
 
 class AdaptiveFusionProcessor:
-    """Run the CDA-EKF (adaptive) and a fixed-weight EKF (baseline)."""
+    """Run the CDA-EKF (adaptive) and a fixed-noise EKF (baseline)."""
 
     def __init__(
         self,
@@ -79,20 +122,58 @@ class AdaptiveFusionProcessor:
         """Fuse one KITTI Raw drive and export trajectory/error artifacts."""
 
         self.logger.info("Starting CDA-EKF fusion for %s", drive)
-        oxts_df, weights_df = self._load_inputs(drive)
+        oxts_df, weights_df, schedule_df = self._load_inputs(drive)
 
         ekf_config = self.config.ekf_config or AdaptiveEKFConfig()
+        x_fix = schedule_df["X Fix (m)"].to_numpy(dtype=float)
+        y_fix = schedule_df["Y Fix (m)"].to_numpy(dtype=float)
+        gps_available = schedule_df["GPS Available"].to_numpy(dtype=bool)
+        gps_state = schedule_df["GPS State"].to_numpy(dtype=object)
+
         try:
             adaptive_df = run_adaptive_ekf(
-                oxts_df, weights_df, config=ekf_config, adaptive=True
+                oxts_df,
+                weights_df,
+                config=ekf_config,
+                adaptive=True,
+                x_fix_m=x_fix,
+                y_fix_m=y_fix,
+                gps_available=gps_available,
             )
             baseline_df = run_adaptive_ekf(
-                oxts_df, weights_df, config=ekf_config, adaptive=False
+                oxts_df,
+                weights_df,
+                config=ekf_config,
+                adaptive=False,
+                x_fix_m=x_fix,
+                y_fix_m=y_fix,
+                gps_available=gps_available,
+            )
+            # Constant-weight control: the SAME mean inflation as the
+            # adaptive arm (weights are sum-to-1 shares, so they never
+            # reach 1.0 and the adaptive arm always inflates R/Q), but
+            # without any per-frame confidence variation.  Comparing the
+            # adaptive arm against THIS baseline isolates the genuinely
+            # confidence-driven component from a systematic noise inflation.
+            constant_weight_df = _constant_weight_frame(weights_df)
+            constant_df = run_adaptive_ekf(
+                oxts_df,
+                constant_weight_df,
+                config=ekf_config,
+                adaptive=True,
+                x_fix_m=x_fix,
+                y_fix_m=y_fix,
+                gps_available=gps_available,
             )
         except AdaptiveEKFError as exc:
             raise AdaptiveFusionError(f"CDA-EKF failed for {drive}: {exc}") from exc
 
-        merged_df = self._merge_trajectories(adaptive_df, baseline_df)
+        gt_x = schedule_df["X GT (m)"].to_numpy(dtype=float)
+        gt_y = schedule_df["Y GT (m)"].to_numpy(dtype=float)
+
+        merged_df = self._merge_trajectories(
+            adaptive_df, baseline_df, constant_df, gt_x, gt_y, gps_available, gps_state
+        )
         fusion_df, error_df = self._compute_error_metrics(merged_df)
         artifacts = self._export_drive_outputs(drive, fusion_df, error_df)
 
@@ -124,18 +205,20 @@ class AdaptiveFusionProcessor:
     # Loading / validation
     # ------------------------------------------------------------------
 
-    def _load_inputs(self, drive: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def _load_inputs(self, drive: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         confidence_csv = self.config.results_dir / f"sensor_confidence_index_{drive}.csv"
         weights_csv = self.config.results_dir / f"adaptive_sensor_weights_{drive}.csv"
+        schedule_csv = self.config.results_dir / f"gps_degradation_schedule_{drive}.csv"
 
-        if not confidence_csv.exists():
-            raise AdaptiveFusionError(
-                f"Sensor confidence index CSV is required before fusion: {confidence_csv}"
-            )
-        if not weights_csv.exists():
-            raise AdaptiveFusionError(
-                f"Adaptive sensor weights CSV is required before fusion: {weights_csv}"
-            )
+        for csv_path, purpose in (
+            (confidence_csv, "sensor confidence index"),
+            (weights_csv, "adaptive sensor weights"),
+            (schedule_csv, "GPS degradation schedule"),
+        ):
+            if not csv_path.exists():
+                raise AdaptiveFusionError(
+                    f"{purpose} CSV is required before fusion: {csv_path}"
+                )
 
         confidence_df = pd.read_csv(confidence_csv)
         missing_oxts = [c for c in OXTS_COLUMNS if c not in confidence_df.columns]
@@ -153,13 +236,26 @@ class AdaptiveFusionProcessor:
                 f"Adaptive sensor weights CSV is missing columns: {missing_weights}"
             )
 
-        if len(oxts_df) != len(weights_df):
+        schedule_df = pd.read_csv(schedule_csv)
+        missing_schedule = [c for c in SCHEDULE_COLUMNS if c not in schedule_df.columns]
+        if missing_schedule:
             raise AdaptiveFusionError(
-                f"Frame count mismatch for {drive}: OXTS={len(oxts_df)}, "
-                f"weights={len(weights_df)}"
+                f"GPS degradation schedule CSV is missing columns: {missing_schedule}"
             )
 
-        return oxts_df, weights_df
+        n = len(oxts_df)
+        if len(weights_df) != n:
+            raise AdaptiveFusionError(
+                f"Frame count mismatch for {drive}: OXTS={n}, "
+                f"weights={len(weights_df)}"
+            )
+        if len(schedule_df) != n:
+            raise AdaptiveFusionError(
+                f"Frame count mismatch for {drive}: OXTS={n}, "
+                f"schedule={len(schedule_df)}"
+            )
+
+        return oxts_df, weights_df, schedule_df
 
     # ------------------------------------------------------------------
     # Computation
@@ -169,63 +265,113 @@ class AdaptiveFusionProcessor:
         self,
         adaptive_df: pd.DataFrame,
         baseline_df: pd.DataFrame,
+        constant_df: pd.DataFrame,
+        gt_x: np.ndarray,
+        gt_y: np.ndarray,
+        gps_available: np.ndarray,
+        gps_state: np.ndarray,
     ) -> pd.DataFrame:
+        gt_x = np.asarray(gt_x, dtype=float)
+        gt_y = np.asarray(gt_y, dtype=float)
+        gps_available = np.asarray(gps_available, dtype=bool)
+        gps_state = np.asarray(gps_state, dtype=object)
         merged = adaptive_df.merge(
             baseline_df,
             on=["Frame", "X GPS", "Y GPS", "V GPS"],
             suffixes=(" Adaptive", " Baseline"),
         )
+        merged = merged.merge(
+            constant_df,
+            on=["Frame", "X GPS", "Y GPS", "V GPS"],
+            suffixes=("", " Constant"),
+        )
+        merged = merged.rename(
+            columns={
+                "X": "X Constant",
+                "Y": "Y Constant",
+                "Yaw": "Yaw Constant",
+                "V": "V Constant",
+            }
+        )
+        merged["X GT (m)"] = gt_x
+        merged["Y GT (m)"] = gt_y
+        merged["GPS Available"] = gps_available
+        merged["GPS State"] = gps_state
         return merged
 
     def _compute_error_metrics(
         self, fusion_df: pd.DataFrame
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
-        """Position RMSE / mean absolute error against the GPS reference track."""
+        """Position RMSE / mean absolute error against the pristine GT track."""
+
+        gt_x = fusion_df["X GT (m)"].to_numpy(dtype=float)
+        gt_y = fusion_df["Y GT (m)"].to_numpy(dtype=float)
 
         def _position_errors(x_col: str, y_col: str) -> np.ndarray:
-            dx = fusion_df[x_col].to_numpy(dtype=float) - fusion_df["X GPS"].to_numpy(dtype=float)
-            dy = fusion_df[y_col].to_numpy(dtype=float) - fusion_df["Y GPS"].to_numpy(dtype=float)
+            dx = fusion_df[x_col].to_numpy(dtype=float) - gt_x
+            dy = fusion_df[y_col].to_numpy(dtype=float) - gt_y
             return np.sqrt(dx**2 + dy**2)
 
         adaptive_errors = _position_errors("X Adaptive", "Y Adaptive")
         baseline_errors = _position_errors("X Baseline", "Y Baseline")
+        constant_errors = _position_errors("X Constant", "Y Constant")
 
         adaptive_rmse = float(np.sqrt(np.mean(adaptive_errors**2)))
         baseline_rmse = float(np.sqrt(np.mean(baseline_errors**2)))
+        constant_rmse = float(np.sqrt(np.mean(constant_errors**2)))
         adaptive_mae = float(np.mean(adaptive_errors))
         baseline_mae = float(np.mean(baseline_errors))
+        constant_mae = float(np.mean(constant_errors))
         adaptive_final_drift = float(adaptive_errors[-1])
         baseline_final_drift = float(baseline_errors[-1])
+        constant_final_drift = float(constant_errors[-1])
 
         improvement_pct = (
             0.0
             if baseline_rmse <= 1e-12
             else float(100.0 * (baseline_rmse - adaptive_rmse) / baseline_rmse)
         )
+        # vs the constant-weight control: positive means the per-frame
+        # confidence variation itself reduces error beyond a fixed inflation.
+        improvement_vs_constant_pct = (
+            0.0
+            if constant_rmse <= 1e-12
+            else float(100.0 * (constant_rmse - adaptive_rmse) / constant_rmse)
+        )
 
         fusion_df = fusion_df.copy()
         fusion_df["Adaptive Position Error (m)"] = adaptive_errors
         fusion_df["Baseline Position Error (m)"] = baseline_errors
+        fusion_df["Constant Weight Position Error (m)"] = constant_errors
+        fusion_df["GPS Available"] = fusion_df["GPS Available"].astype(bool)
 
         error_df = pd.DataFrame(
             {
                 "Metric": [
                     "Adaptive RMSE (m)",
                     "Baseline RMSE (m)",
+                    "Constant Weight RMSE (m)",
                     "Adaptive MAE (m)",
                     "Baseline MAE (m)",
+                    "Constant Weight MAE (m)",
                     "Adaptive Final Drift (m)",
                     "Baseline Final Drift (m)",
+                    "Constant Weight Final Drift (m)",
                     "RMSE Improvement (%)",
+                    "RMSE Improvement vs Constant Weight (%)",
                 ],
                 "Value": [
                     adaptive_rmse,
                     baseline_rmse,
+                    constant_rmse,
                     adaptive_mae,
                     baseline_mae,
+                    constant_mae,
                     adaptive_final_drift,
                     baseline_final_drift,
+                    constant_final_drift,
                     improvement_pct,
+                    improvement_vs_constant_pct,
                 ],
             }
         )
@@ -275,11 +421,12 @@ class AdaptiveFusionProcessor:
         drive: str,
     ) -> None:
         fig, axis = plt.subplots(figsize=(9, 9))
-        axis.plot(fusion_df["X GPS"], fusion_df["Y GPS"], label="GPS Reference", linewidth=1.4, color="tab:gray")
+        axis.plot(fusion_df["X GT (m)"], fusion_df["Y GT (m)"], label="Pristine GT", linewidth=1.4, color="tab:gray")
+        axis.plot(fusion_df["X GPS"], fusion_df["Y GPS"], label="GPS Fix (degraded)", linewidth=0.7, color="tab:red", alpha=0.6)
         axis.plot(
             fusion_df["X Baseline"],
             fusion_df["Y Baseline"],
-            label="Fixed-Weight EKF (Baseline)",
+            label="Fixed-Noise EKF (Baseline)",
             linewidth=1.6,
             linestyle="--",
             color="tab:orange",
@@ -291,7 +438,7 @@ class AdaptiveFusionProcessor:
             linewidth=1.8,
             color="tab:blue",
         )
-        axis.set_title(f"Fused Trajectory - {drive}")
+        axis.set_title(f"Fused Trajectory vs. Pristine Ground Truth - {drive}")
         axis.set_xlabel("X (m)")
         axis.set_ylabel("Y (m)")
         axis.axis("equal")
@@ -311,7 +458,7 @@ class AdaptiveFusionProcessor:
         axis.plot(
             fusion_df["Frame"],
             fusion_df["Baseline Position Error (m)"],
-            label="Fixed-Weight EKF (Baseline)",
+            label="Fixed-Noise EKF (Baseline)",
             linewidth=1.6,
             linestyle="--",
             color="tab:orange",
@@ -323,7 +470,10 @@ class AdaptiveFusionProcessor:
             linewidth=1.8,
             color="tab:blue",
         )
-        axis.set_title(f"Position Error vs. GPS Reference - {drive}")
+        outages = fusion_df.loc[~fusion_df["GPS Available"], "Frame"]
+        for x0 in outages:
+            axis.axvspan(x0 - 0.5, x0 + 0.5, color="tab:red", alpha=0.15)
+        axis.set_title(f"Position Error vs. Pristine Ground Truth - {drive}")
         axis.set_xlabel("Frame")
         axis.set_ylabel("Position Error (m)")
         axis.grid(True, alpha=0.3)
@@ -364,12 +514,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments for adaptive-fusion processing."""
 
     parser = argparse.ArgumentParser(
-        description="Run the CDA-EKF and fixed-weight baseline for KITTI Raw drives."
+        description="Run the CDA-EKF and fixed-noise baseline for KITTI Raw drives."
     )
     parser.add_argument(
         "--project-root",
         type=Path,
-        default=Path(r"D:\Research\Papers\Paper_2"),
+        default=Path(__file__).resolve().parents[1],
         help="Project root containing results and figures directories.",
     )
     parser.add_argument(

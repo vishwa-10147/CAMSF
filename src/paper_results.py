@@ -254,7 +254,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Regenerate publication tables and figures from the final merged data."
     )
-    parser.add_argument("--project-root", type=Path, default=Path(r"D:\Research\Papers\Paper_2"))
+    parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[1])
     return parser.parse_args(argv)
 
 

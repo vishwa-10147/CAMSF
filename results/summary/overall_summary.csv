@@ -1,0 +1,2 @@
+Adaptive RMSE (m),Baseline RMSE (m),Constant Weight RMSE (m),Adaptive MAE (m),Baseline MAE (m),Constant Weight MAE (m),Total Frames,RMSE Improvement (%),RMSE Improvement vs Constant Weight (%),Drives Improved,Total Drives
+2.8887755820644143,2.941373807426527,2.9225908872712467,1.7341535582009286,1.7728727914506943,1.7588159255324864,2472,1.7882196825615981,1.1570317745842607,8,9

@@ -1,8 +1,12 @@
 Metric,Value
-Adaptive RMSE (m),0.0801459585297543
-Baseline RMSE (m),0.08193300556663381
-Adaptive MAE (m),0.04567281998692788
-Baseline MAE (m),0.04650834525301234
-Adaptive Final Drift (m),0.09139353776526757
-Baseline Final Drift (m),0.12602185630690996
-RMSE Improvement (%),2.181107631192851
+Adaptive RMSE (m),1.8541941674878848
+Baseline RMSE (m),1.8728316184918936
+Constant Weight RMSE (m),1.8407431051133722
+Adaptive MAE (m),1.2617479744851952
+Baseline MAE (m),1.2824281005643192
+Constant Weight MAE (m),1.2707101156144158
+Adaptive Final Drift (m),5.075793494106403
+Baseline Final Drift (m),4.204344336617859
+Constant Weight Final Drift (m),4.187414637794414
+RMSE Improvement (%),0.9951482461096377
+RMSE Improvement vs Constant Weight (%),-0.7307408805252099

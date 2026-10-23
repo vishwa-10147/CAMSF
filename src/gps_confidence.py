@@ -214,7 +214,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--project-root",
         type=Path,
-        default=Path(r"D:\Research\Papers\Paper_2"),
+        default=Path(__file__).resolve().parents[1],
         help="Project root containing results and figures directories.",
     )
     parser.add_argument(

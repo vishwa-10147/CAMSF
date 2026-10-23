@@ -313,7 +313,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Train and compare regression models on the localization ML dataset."
     )
-    parser.add_argument("--project-root", type=Path, default=Path(r"D:\Research\Papers\Paper_2"))
+    parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--dataset", type=Path, default=None, help="Path to merged_localization_ml_dataset.csv.")
     parser.add_argument("--model-output", type=Path, default=None, help="Where to save the best model (.joblib).")
     parser.add_argument("--test-size", type=float, default=0.2)

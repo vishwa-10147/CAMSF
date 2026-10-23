@@ -73,6 +73,23 @@ NON_FEATURE_COLUMNS: tuple[str, ...] = (
     "Confidence Level_sensor",
     TARGET_COLUMN,
     "Baseline Position Error (m)",
+    # Pristine ground-truth coordinates leak the target: the fusion error
+    # is derived from them, so they must never enter the feature matrix.
+    "X GT (m)",
+    "Y GT (m)",
+    # Fused outputs and raw fix coordinates are not pre-fusion features:
+    # the model must predict the fused error from confidence/quality only.
+    "X Adaptive",
+    "Y Adaptive",
+    "Yaw Adaptive",
+    "V Adaptive",
+    "X Baseline",
+    "Y Baseline",
+    "Yaw Baseline",
+    "V Baseline",
+    "X GPS",
+    "Y GPS",
+    "V GPS",
 )
 
 
@@ -282,7 +299,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--project-root",
         type=Path,
-        default=Path(r"D:\Research\Papers\Paper_2"),
+        default=Path(__file__).resolve().parents[1],
         help="Project root containing results/merged/.",
     )
     parser.add_argument(

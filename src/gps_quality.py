@@ -147,7 +147,29 @@ class GPSQualityProcessor:
         return artifacts_by_drive
 
     def load_oxts_dataframe(self, dataset: KITTIRawDataset) -> pd.DataFrame:
-        """Load all OXTS packets for a KITTI drive into a typed dataframe."""
+        """
+        Load all OXTS packets for a KITTI drive into a typed dataframe.
+
+        The fixed pipeline feeds a *degraded* OXTS frame (written by
+        ``gps_degradation.py`` as ``degraded_oxts_<drive>.csv``) into the
+        quality stage so that GPS confidence actually reflects the injected
+        degradation.  If that artifact is present it takes precedence; only
+        when it is absent (fresh clone / pristine run) are the raw KITTI
+        packets used.
+        """
+
+        degraded_csv = self.config.results_dir / f"degraded_oxts_{dataset.drive}.csv"
+        if degraded_csv.exists():
+            self.logger.info(
+                "Loading degraded OXTS for %s from %s", dataset.drive, degraded_csv
+            )
+            degraded_df = pd.read_csv(degraded_csv)
+            missing = [c for c in OXTS_COLUMNS if c not in degraded_df.columns]
+            if missing:
+                raise GPSQualityError(
+                    f"Degraded OXTS CSV is missing columns: {missing}"
+                )
+            return degraded_df[list(OXTS_COLUMNS)].reset_index(drop=True)
 
         frame_count = dataset.get_frame_count()
         if frame_count <= 0:
@@ -360,13 +382,13 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--dataset-root",
         type=Path,
-        default=Path(r"D:\Research\Datasets\KITTI"),
+        default=Path(__file__).resolve().parents[1] / "datasets" / "KITTI",
         help="Path to KITTI Raw dataset root.",
     )
     parser.add_argument(
         "--project-root",
         type=Path,
-        default=Path(r"D:\Research\Papers\Paper_2"),
+        default=Path(__file__).resolve().parents[1],
         help="Project root containing results and figures directories.",
     )
     parser.add_argument(

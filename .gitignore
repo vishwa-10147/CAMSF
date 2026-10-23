@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Dataset (download KITTI Raw separately, see README)
+datasets/KITTI/
+
+# Office lock files / OS
+~$*
+.DS_Store
+Thumbs.db

@@ -1,7 +1,7 @@
 Metric,Value
-Average GPS Confidence,0.7075348709921668
+Average GPS Confidence,0.7873344791145162
 Average IMU Confidence,0.9589949926155366
-Average Sensor Confidence Index,0.8081189196415148
-Maximum Sensor Confidence Index,0.8962502332912584
-Minimum Sensor Confidence Index,0.6022662076747141
-Sensor Confidence Index Std,0.07821203785565702
+Average Sensor Confidence Index,0.8559986845149243
+Maximum Sensor Confidence Index,0.9782102076441043
+Minimum Sensor Confidence Index,0.6439276704773134
+Sensor Confidence Index Std,0.09242879053181635

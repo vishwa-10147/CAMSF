@@ -262,7 +262,7 @@ def configure_logging(level: int = logging.INFO) -> None:
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate the saved localization model on unseen data.")
-    parser.add_argument("--project-root", type=Path, default=Path(r"D:\Research\Papers\Paper_2"))
+    parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--model", type=Path, default=None, help="Path to best_localization_model.joblib.")
     parser.add_argument("--dataset", type=Path, default=None, help="Path to merged_localization_ml_dataset.csv.")
     parser.add_argument(

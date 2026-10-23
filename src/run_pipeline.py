@@ -60,9 +60,9 @@ LOGGER = logging.getLogger(__name__)
 
 DRIVES = list(DEFAULT_DRIVES)
 
-PROJECT_ROOT = Path(r"D:\Research\Papers\Paper_2")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-DATASET_ROOT = Path(r"D:\Research\Datasets\KITTI")
+DATASET_ROOT = Path(__file__).resolve().parents[1] / "datasets" / "KITTI"
 
 RESULT_DIR = PROJECT_ROOT / "results"
 
